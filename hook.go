@@ -41,7 +41,10 @@ func (OpenTelemetryHook) BeforeProcess(ctx context.Context, cmd redis.Cmder) (co
 func (OpenTelemetryHook) AfterProcess(ctx context.Context, cmd redis.Cmder) error {
 	if trace {
 		span := opentracing.SpanFromContext(ctx)
-		span.Finish()
+		if span != nil {
+			span.Finish()
+		}
+
 	}
 	return nil
 }
@@ -102,7 +105,9 @@ func String(b []byte) string {
 func (OpenTelemetryHook) AfterProcessPipeline(ctx context.Context, cmds []redis.Cmder) error {
 	if trace {
 		span := opentracing.SpanFromContext(ctx)
-		span.Finish()
+		if span != nil {
+			span.Finish()
+		}
 	}
 	return nil
 }
