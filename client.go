@@ -110,19 +110,24 @@ func NewClient(opts Options) *Client {
 	switch opts.Type {
 	// 群集客户端
 	case ClientCluster:
-		ctx := context.Background()
+
 		tc := redis.NewClusterClient(opts.GetClusterConfig())
-		tc.ForEachShard(ctx, func(ctx context.Context, shard *redis.Client) error {
-			shard.AddHook(OpenTelemetryHook{})
-			return nil
-		})
+		if trace {
+			ctx := context.Background()
+			tc.ForEachShard(ctx, func(ctx context.Context, shard *redis.Client) error {
+				shard.AddHook(OpenTelemetryHook{})
+				return nil
+			})
+		}
 		r.client = tc
 	// 标准客户端也是默认值
 	case ClientNormal:
 		fallthrough
 	default:
 		tc := redis.NewClient(opts.GetNormalConfig())
-		tc.AddHook(OpenTelemetryHook{})
+		if trace {
+			tc.AddHook(OpenTelemetryHook{})
+		}
 		r.client = tc
 	}
 	r.fmtString = opts.KeyPrefix + "%s"
