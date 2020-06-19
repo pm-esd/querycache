@@ -41,8 +41,8 @@ func (configs *Configs) SetConfig(name string, cf *Config) *Configs {
 	return configs
 }
 
-//GetRedis  获取 redis 实列
-func (configs *Configs) GetRedis(ctx context.Context, name string) *Client {
+//Redis  获取 redis 实列
+func (configs *Configs) Redis(name string) *Client {
 	conn, ok := configs.connections[name]
 	if ok {
 		return conn
@@ -52,7 +52,7 @@ func (configs *Configs) GetRedis(ctx context.Context, name string) *Client {
 		Log.Panic("Redis配置:" + name + "找不到！")
 	}
 
-	db := connect(ctx, config)
+	db := connect(config)
 	configs.mu.Lock()
 	configs.connections[name] = db
 	configs.mu.Unlock()
@@ -62,7 +62,7 @@ func (configs *Configs) GetRedis(ctx context.Context, name string) *Client {
 	return v
 }
 
-func connect(ctx context.Context, config *Config) *Client {
+func connect(config *Config) *Client {
 	opts := Options{}
 	if config.Type {
 		opts.Type = ClientCluster
@@ -86,6 +86,7 @@ func connect(ctx context.Context, config *Config) *Client {
 		opts.Password = config.Password
 	}
 	client := NewClient(opts)
+	ctx := context.Background()
 	if err := client.Ping(ctx).Err(); err != nil {
 		Log.Panic(err.Error())
 	}
@@ -98,9 +99,8 @@ const RedisNil = redis.Nil
 // Client a struct representing the redis client
 type Client struct {
 	opts      Options
-	client    redis.StatefulCmdable
+	client    redis.Cmdable
 	fmtString string
-	ctx       context.Context
 }
 
 // NewClient 新客户端
@@ -110,17 +110,20 @@ func NewClient(opts Options) *Client {
 	switch opts.Type {
 	// 群集客户端
 	case ClientCluster:
-		r.client = redis.NewClusterClient(opts.GetClusterConfig())
-		// redisClient.AddHook()
-		// r.client = tc
+		ctx := context.Background()
+		tc := redis.NewClusterClient(opts.GetClusterConfig())
+		tc.ForEachShard(ctx, func(ctx context.Context, shard *redis.Client) error {
+			shard.AddHook(OpenTelemetryHook{})
+			return nil
+		})
+		r.client = tc
 	// 标准客户端也是默认值
 	case ClientNormal:
 		fallthrough
 	default:
-		r.client = redis.NewClient(opts.GetNormalConfig())
-		// redisClient.AddHook()
-		// r.client = tc
-
+		tc := redis.NewClient(opts.GetNormalConfig())
+		tc.AddHook(OpenTelemetryHook{})
+		r.client = tc
 	}
 	r.fmtString = opts.KeyPrefix + "%s"
 	return r
@@ -154,7 +157,7 @@ func (r *Client) ks(key ...string) []string {
 }
 
 // GetClient 返回客户端
-func (r *Client) GetClient() redis.StatefulCmdable {
+func (r *Client) GetClient() redis.Cmdable {
 	return r.client
 }
 

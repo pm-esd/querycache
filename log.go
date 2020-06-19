@@ -16,3 +16,9 @@ type Logger interface {
 	Debug(args ...interface{})
 	Trace(args ...interface{})
 }
+
+var trace bool
+
+func (configs *Configs) SetTrace(t bool) {
+	trace = t
+}
