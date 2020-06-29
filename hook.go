@@ -21,8 +21,8 @@ func (OpenTelemetryHook) BeforeProcess(ctx context.Context, cmd redis.Cmder) (co
 	b := make([]byte, 32)
 	b = appendCmd(b, cmd)
 
-	if ctx == nil {
-		ctx = context.Background()
+	if ctx == nil || ctx.Err() != nil {
+		ctx = context.TODO()
 	}
 
 	if trace {
@@ -39,6 +39,9 @@ func (OpenTelemetryHook) BeforeProcess(ctx context.Context, cmd redis.Cmder) (co
 }
 
 func (OpenTelemetryHook) AfterProcess(ctx context.Context, cmd redis.Cmder) error {
+	if ctx == nil || ctx.Err() != nil {
+		ctx = context.TODO()
+	}
 	if trace {
 		span := opentracing.SpanFromContext(ctx)
 		if span != nil {
@@ -50,8 +53,8 @@ func (OpenTelemetryHook) AfterProcess(ctx context.Context, cmd redis.Cmder) erro
 }
 
 func (OpenTelemetryHook) BeforeProcessPipeline(ctx context.Context, cmds []redis.Cmder) (context.Context, error) {
-	if ctx == nil {
-		ctx = context.Background()
+	if ctx == nil || ctx.Err() != nil {
+		ctx = context.TODO()
 	}
 
 	if trace {
@@ -103,6 +106,9 @@ func String(b []byte) string {
 }
 
 func (OpenTelemetryHook) AfterProcessPipeline(ctx context.Context, cmds []redis.Cmder) error {
+	if ctx == nil || ctx.Err() != nil {
+		ctx = context.TODO()
+	}
 	if trace {
 		span := opentracing.SpanFromContext(ctx)
 		if span != nil {
